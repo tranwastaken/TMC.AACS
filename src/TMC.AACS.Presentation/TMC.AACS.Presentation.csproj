@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- Presentation gọi use case của Application.
+       Tham chiếu Infrastructure CHỈ để Program.cs (composition root) đăng ký DI qua AddInfrastructure();
+       không được dùng kiểu của Infrastructure trong controller/endpoint. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>TMC.AACS.Presentation</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TMC.AACS.Application\TMC.AACS.Application.csproj" />
+    <ProjectReference Include="..\TMC.AACS.Infrastructure\TMC.AACS.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
