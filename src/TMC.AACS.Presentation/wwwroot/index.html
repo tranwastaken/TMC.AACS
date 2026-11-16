@@ -4,24 +4,157 @@
   <meta charset="utf-8">
   <!-- viewport: bắt buộc để hiển thị đúng trên điện thoại (responsive) -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TMC AACS</title>
-  <style>
-    body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; background: #f5f5f5; }
-    main { max-width: 480px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 12px; }
-    #status { font-weight: bold; }
-  </style>
+  <meta name="theme-color" content="#1F2A33">
+  <title>TMC AACS – Ra vào và chấm công</title>
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-  <main>
-    <h1>TMC AACS</h1>
-    <p>Trang giữ chỗ. Màn hình App Nhân viên và Kiosk sẽ thay thế file này.</p>
-    <p>Trạng thái server: <span id="status">đang kiểm tra...</span></p>
+  <a class="skip" href="#main">Bỏ qua thanh điều hướng</a>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">TMC AACS</span>
+    </div>
+
+    <!-- Ba màn hình; có thể mở thẳng bằng địa chỉ /#the, /#kiosk, /#quanly -->
+    <nav class="tabs" aria-label="Màn hình">
+      <a href="#the" data-view="the">Thẻ ra vào</a>
+      <a href="#kiosk" data-view="kiosk">Kiosk cổng</a>
+      <a href="#quanly" data-view="quanly">Quản lý</a>
+    </nav>
+
+    <p class="server" id="server-status" role="status">
+      <span class="dot" aria-hidden="true"></span>
+      <span class="server-text">Đang kiểm tra máy chủ…</span>
+    </p>
+  </header>
+
+  <!-- Hiện khi đang dùng dữ liệu demo (server chưa có API nghiệp vụ) -->
+  <div class="demo-band" id="demo-band" hidden>
+    <p><strong>Đang dùng dữ liệu demo.</strong> <span id="demo-reason"></span></p>
+    <button type="button" class="link-btn" id="demo-reset">Khôi phục dữ liệu demo</button>
+  </div>
+
+  <main id="main">
+
+    <!-- ================= THẺ RA VÀO (ứng dụng nhân viên) ================= -->
+    <section class="view view-the" id="view-the" aria-labelledby="the-title" hidden>
+      <div class="phone">
+        <h1 id="the-title" class="visually-hidden">Thẻ ra vào của nhân viên</h1>
+
+        <label class="field">
+          <span class="field-label">Nhân viên</span>
+          <select id="the-employee"></select>
+          <span class="field-hint">Trong ứng dụng thật, đây là tài khoản đang đăng nhập.</span>
+        </label>
+
+        <div class="person">
+          <p class="person-name" id="the-name">–</p>
+          <p class="person-meta" id="the-meta">–</p>
+          <p class="person-warning" id="the-warning" hidden>Tài khoản đang bị khóa. Mã vẫn hiển thị nhưng cổng sẽ từ chối.</p>
+        </div>
+
+        <figure class="qr-card">
+          <div class="qr-box" id="the-qr" role="img" aria-label="Mã QR ra vào"></div>
+          <div class="qr-timer" aria-hidden="true"><span id="the-bar"></span></div>
+          <figcaption id="the-countdown">Đang tạo mã…</figcaption>
+        </figure>
+
+        <p class="the-help">Đưa mã vào máy quét tại cổng. Mã chỉ dùng được một lần và tự đổi sau mỗi 15 giây, nên ảnh chụp màn hình sẽ không dùng được.</p>
+
+        <h2 class="small-heading">Lượt ra vào gần đây của bạn</h2>
+        <ol class="history" id="the-history"></ol>
+      </div>
+    </section>
+
+    <!-- ================= KIOSK CỔNG ================= -->
+    <section class="view view-kiosk" id="view-kiosk" aria-labelledby="kiosk-title" hidden>
+      <h1 id="kiosk-title" class="visually-hidden">Kiosk tại cổng</h1>
+
+      <aside class="kiosk-side">
+        <label class="field">
+          <span class="field-label">Gate Station</span>
+          <select id="kiosk-gate"></select>
+        </label>
+
+        <form class="scan-form" id="scan-form" autocomplete="off">
+          <label class="field">
+            <span class="field-label">Dữ liệu từ máy quét</span>
+            <!-- Máy quét QR dạng USB-HID gõ nội dung mã vào ô này rồi nhấn Enter -->
+            <input id="scan-input" name="scan" type="text" spellcheck="false" placeholder="Quét mã, hoặc dán nội dung mã rồi nhấn Enter">
+          </label>
+          <div class="scan-actions">
+            <button type="submit" class="btn btn-primary">Kiểm tra mã</button>
+            <button type="button" class="btn" id="use-current-qr">Dùng mã trên Thẻ ra vào</button>
+          </div>
+          <p class="field-hint">Nút thứ hai lấy mã đang hiển thị ở màn hình Thẻ ra vào, để thử khi không có máy quét.</p>
+        </form>
+
+        <h2 class="small-heading">Lượt quét gần đây tại cổng này</h2>
+        <ol class="history" id="kiosk-history"></ol>
+      </aside>
+
+      <!-- Tấm biển kết quả: thành phần nổi bật nhất của kiosk -->
+      <div class="sign sign-idle" id="sign" aria-live="assertive">
+        <p class="sign-title" id="sign-title">Mời quét mã</p>
+        <p class="sign-name" id="sign-name">Đưa mã QR trên điện thoại vào máy quét</p>
+        <p class="sign-detail" id="sign-detail"></p>
+        <p class="sign-foot" id="sign-foot"></p>
+      </div>
+    </section>
+
+    <!-- ================= QUẢN LÝ (web portal cho HR, bảo vệ, quản trị) ================= -->
+    <section class="view view-quanly" id="view-quanly" aria-labelledby="ql-title" hidden>
+      <div class="ql-head">
+        <h1 id="ql-title">Lượt quét hôm nay</h1>
+        <p class="ql-summary" id="ql-summary"></p>
+      </div>
+
+      <div class="ql-grid">
+        <div class="ql-main">
+          <div class="filters" role="group" aria-label="Lọc lượt quét">
+            <label class="field field-inline">
+              <span class="field-label">Kết quả</span>
+              <select id="ql-result">
+                <option value="all">Tất cả</option>
+                <option value="Allowed">Cho phép</option>
+                <option value="Denied">Từ chối</option>
+              </select>
+            </label>
+            <label class="field field-inline">
+              <span class="field-label">Cổng</span>
+              <select id="ql-gate"><option value="all">Tất cả cổng</option></select>
+            </label>
+            <button type="button" class="btn" id="ql-refresh">Tải lại</button>
+          </div>
+
+          <div class="table-wrap">
+            <table class="tx-table">
+              <thead>
+                <tr><th scope="col">Thời gian</th><th scope="col">Nhân viên</th><th scope="col">Cổng</th><th scope="col">Kết quả</th><th scope="col">Lý do từ chối</th></tr>
+              </thead>
+              <tbody id="ql-rows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="ql-side">
+          <h2 class="small-heading">Nhân viên</h2>
+          <ul class="admin-list" id="ql-employees"></ul>
+          <h2 class="small-heading">Gate Station</h2>
+          <ul class="admin-list" id="ql-gates"></ul>
+        </div>
+      </div>
+    </section>
+
   </main>
-  <script>
-    fetch('/api/health')
-      .then(r => r.json())
-      .then(d => document.getElementById('status').textContent = d.status)
-      .catch(() => document.getElementById('status').textContent = 'không kết nối được');
-  </script>
+
+  <p class="toast" id="toast" role="alert" hidden></p>
+
+  <script src="js/qrcode.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
