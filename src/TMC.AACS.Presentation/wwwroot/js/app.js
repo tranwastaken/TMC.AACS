@@ -15,6 +15,42 @@ const state = {
   signTimer: null,
 };
 
+/* ---------- Vai trò thiết bị (?vaitro=) ----------
+   Mỗi thiết bị chỉ hiện màn hình của mình:
+     /?vaitro=nhanvien → điện thoại nhân viên, chỉ có Thẻ ra vào
+     /?vaitro=cong     → máy tại cổng, chỉ có Kiosk cổng (quét bằng camera hoặc máy quét)
+     /?vaitro=quanly   → HR, bảo vệ, quản trị, chỉ có Quản lý
+   Không có tham số → hiện đủ ba tab để trình bày.
+   Đây chỉ là ẩn/hiện giao diện. Phân quyền thật phải do server kiểm tra (đăng nhập + RBAC, chương 5). */
+const ROLES = {
+  nhanvien: { view: 'the', label: 'Nhân viên' },
+  cong: { view: 'kiosk', label: 'Thiết bị cổng' },
+  quanly: { view: 'quanly', label: 'Quản lý' },
+};
+const roleParam = new URLSearchParams(location.search).get('vaitro');
+const role = Object.prototype.hasOwnProperty.call(ROLES, roleParam) ? roleParam : null;
+
+/* Trạng thái camera ở Kiosk */
+const camera = {
+  stream: null,
+  timer: null,
+  canvas: null,
+  ctx: null,
+  busy: false,
+  pausedUntil: 0,
+  lastKey: '',
+  lastSeenAt: 0,
+  audio: null,
+};
+const CAMERA_PREF = 'aacs-camera';
+const EMPLOYEE_PREF = 'aacs-nhanvien';
+const SAME_PERSON_IGNORE_MS = 6000; // người vừa quét còn để mã trước camera thì không xử lý lại
+const AFTER_RESULT_PAUSE_MS = 1200; // nghỉ ngắn sau mỗi lượt để biển kết quả kịp hiện
+const SCAN_INTERVAL_MS = 120;
+
+function readPref(key) { try { return localStorage.getItem(key) || ''; } catch (e) { return ''; } }
+function writePref(key, value) { try { localStorage.setItem(key, value); } catch (e) { /* bỏ qua */ } }
+
 /* ---------- Tiện ích hiển thị ---------- */
 
 function el(tag, attrs = {}, ...children) {
@@ -66,13 +102,35 @@ function toast(message) {
 
 const VIEWS = ['the', 'kiosk', 'quanly'];
 
+function currentView() {
+  if (role) return ROLES[role].view;
+  const hash = location.hash.slice(1);
+  return VIEWS.includes(hash) ? hash : 'the';
+}
+
+function applyRole() {
+  if (!role) return;
+  document.body.dataset.role = role;
+  document.querySelector('.tabs').hidden = true;
+  const chip = $('role-chip');
+  chip.textContent = ROLES[role].label;
+  chip.hidden = false;
+  document.title = `TMC AACS – ${ROLES[role].label}`;
+  if (role === 'cong') {
+    // Máy cổng không có Thẻ ra vào, nên bỏ nút lấy mã từ màn hình đó.
+    $('use-current-qr').hidden = true;
+    $('use-current-hint').hidden = true;
+  }
+}
+
 function route() {
-  const view = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'the';
+  const view = currentView();
   VIEWS.forEach(v => { $(`view-${v}`).hidden = v !== view; });
   document.querySelectorAll('.tabs a').forEach(a => {
     if (a.dataset.view === view) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   });
+  if (view !== 'kiosk' && camera.stream) stopCamera();   // rời Kiosk thì trả camera
   if (view === 'kiosk') { renderKioskHistory(); $('scan-input').focus(); }
   if (view === 'quanly') renderAdmin();
   if (view === 'the') renderEmployeeHistory();
@@ -105,7 +163,9 @@ function fillEmployeeSelect() {
   const sel = $('the-employee');
   sel.replaceChildren(...state.employees.map(e => el('option', { value: e.id, text: e.fullName })));
   if (!state.currentEmployeeId || !employeeById(state.currentEmployeeId)) {
-    state.currentEmployeeId = state.employees.length ? state.employees[0].id : null;
+    // Điện thoại nhớ người đã chọn lần trước (thay cho đăng nhập trong bản demo).
+    const saved = readPref(EMPLOYEE_PREF);
+    state.currentEmployeeId = employeeById(saved) ? saved : (state.employees.length ? state.employees[0].id : null);
   }
   sel.value = state.currentEmployeeId || '';
 }
@@ -184,8 +244,18 @@ function setSign(kind, title, name, detail, foot) {
   $('sign-foot').textContent = foot || '';
   clearTimeout(state.signTimer);
   if (kind === 'go' || kind === 'stop') {
-    state.signTimer = setTimeout(() => setSign('idle', 'Mời quét mã', 'Đưa mã QR trên điện thoại vào máy quét'), 6000);
+    state.signTimer = setTimeout(setIdleSign, 6000);
   }
+}
+
+function setIdleSign() {
+  setSign('idle', 'Mời quét mã', camera.stream
+    ? 'Đưa mã QR trên điện thoại vào trước camera'
+    : 'Đưa mã QR trên điện thoại vào máy quét');
+}
+
+function refreshIdleSign() {
+  if ($('sign').classList.contains('sign-idle')) setIdleSign();
 }
 
 async function handleScan(content) {
@@ -197,6 +267,7 @@ async function handleScan(content) {
   if (!parsed) {
     setSign('stop', 'Không đọc được mã', '', 'Mã này không phải mã ra vào của TMC. Mở lại ứng dụng và quét mã đang hiển thị.',
       `${gate ? gate.location : ''}, lúc ${fmtTime(now.toISOString(), true)}`);
+    beep(false);
     return;
   }
 
@@ -216,8 +287,10 @@ async function handleScan(content) {
     const foot = `${gate ? gate.location : ''}, lúc ${fmtTime(now.toISOString(), true)}. Phản hồi trong ${ms} ms.`;
     if (res.isSuccess) setSign('go', 'Mời qua cổng', employeeLabel(parsed.employeeId), res.message, foot);
     else setSign('stop', 'Không được vào', employeeLabel(parsed.employeeId), res.message, foot);
+    beep(res.isSuccess);
   } catch (err) {
     setSign('stop', 'Chưa kiểm tra được mã', '', 'Không liên lạc được máy chủ. Báo bảo vệ để được hỗ trợ qua cổng.', err.message);
+    beep(false);
   }
   await reloadAttendance();
   renderKioskHistory();
@@ -229,6 +302,172 @@ function renderKioskHistory() {
   $('kiosk-history').replaceChildren(...(rows.length
     ? rows.map(t => historyItem(t, employeeLabel(t.employeeId)))
     : [el('li', {}, el('span', { class: 'empty', text: 'Chưa có lượt quét nào tại cổng này.' }))]));
+}
+
+/* ---------- Camera quét mã (Kiosk) ----------
+   Lấy hình từ webcam, cứ ~120 ms đọc một khung bằng jsQR. Đọc được mã thì gọi handleScan,
+   giống hệt khi máy quét USB gõ nội dung mã vào ô nhập. */
+
+function cameraHint(text, isError = false) {
+  const hint = $('camera-hint');
+  hint.textContent = text;
+  hint.classList.toggle('hint-error', isError);
+}
+
+function cameraErrorMessage(err) {
+  switch (err && err.name) {
+    case 'NotAllowedError':
+      return 'Trình duyệt đang chặn camera. Bấm biểu tượng bên trái thanh địa chỉ, chọn cho phép Camera, rồi bấm Bật camera lại.';
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return 'Không tìm thấy camera trên máy này.';
+    case 'NotReadableError':
+      return 'Camera đang được ứng dụng khác dùng (Zoom, Teams, ứng dụng Camera…). Tắt ứng dụng đó rồi bấm Bật camera lại.';
+    default:
+      return `Không mở được camera: ${err && err.message ? err.message : err}`;
+  }
+}
+
+async function fillCameraDevices(currentId) {
+  const select = $('camera-device');
+  let cams = [];
+  try { cams = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput'); } catch (e) { /* bỏ qua */ }
+  select.replaceChildren(...cams.map((d, i) => el('option', { value: d.deviceId, text: d.label || `Camera ${i + 1}` })));
+  if (currentId) select.value = currentId;
+  select.hidden = cams.length < 2;   // chỉ hiện khi máy có từ 2 camera trở lên
+}
+
+async function startCamera() {
+  // Trình duyệt chỉ cấp camera cho trang "an toàn": https, hoặc http://localhost.
+  if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    const port = location.port ? `:${location.port}` : '';
+    cameraHint(`Trình duyệt chỉ cho dùng camera khi trang mở bằng localhost hoặc https. Trên máy làm cổng, mở http://localhost${port}/?vaitro=cong thay vì địa chỉ IP.`, true);
+    return;
+  }
+  if (typeof jsQR !== 'function') {
+    cameraHint('Thiếu file js/jsQR.js nên chưa đọc được mã từ camera.', true);
+    return;
+  }
+
+  stopCamera();
+  const deviceId = $('camera-device').value || readPref(CAMERA_PREF);
+  const video = { width: { ideal: 1280 }, height: { ideal: 720 } };
+  if (deviceId) video.deviceId = { exact: deviceId };
+  else video.facingMode = { ideal: 'environment' };   // máy tính bảng: ưu tiên camera sau
+
+  try {
+    camera.stream = await navigator.mediaDevices.getUserMedia({ audio: false, video });
+  } catch (err) {
+    if (deviceId && (err.name === 'OverconstrainedError' || err.name === 'NotFoundError')) {
+      // Camera đã chọn lần trước không còn cắm → quay về camera mặc định.
+      writePref(CAMERA_PREF, '');
+      $('camera-device').replaceChildren();
+      return startCamera();
+    }
+    cameraHint(cameraErrorMessage(err), true);
+    return;
+  }
+
+  const v = $('camera-video');
+  const track = camera.stream.getVideoTracks()[0];
+  const settings = track && track.getSettings ? track.getSettings() : {};
+  // Webcam hướng về người dùng thì lật ngang hình xem trước cho dễ canh, như soi gương.
+  // Chỉ lật phần hiển thị; khung hình đưa vào jsQR vẫn giữ nguyên.
+  v.classList.toggle('mirror', settings.facingMode !== 'environment');
+  v.srcObject = camera.stream;
+  try { await v.play(); } catch (e) { /* video sẽ tự phát khi có hình */ }
+
+  $('camera-frame').hidden = false;
+  $('camera-toggle').textContent = 'Tắt camera';
+  cameraHint('Đưa mã QR trên điện thoại vào khung vàng, cách camera khoảng 20–30 cm. Nếu đọc chậm, tăng độ sáng màn hình điện thoại.');
+  if (settings.deviceId) writePref(CAMERA_PREF, settings.deviceId);
+  await fillCameraDevices(settings.deviceId);
+
+  if (!camera.canvas) {
+    camera.canvas = document.createElement('canvas');
+    camera.ctx = camera.canvas.getContext('2d', { willReadFrequently: true });
+  }
+  camera.lastKey = '';
+  refreshIdleSign();
+  scheduleCameraScan();
+}
+
+function stopCamera() {
+  clearTimeout(camera.timer);
+  camera.timer = null;
+  if (camera.stream) camera.stream.getTracks().forEach(t => t.stop());
+  camera.stream = null;
+  $('camera-video').srcObject = null;
+  $('camera-frame').hidden = true;
+  $('camera-toggle').textContent = 'Bật camera';
+  refreshIdleSign();
+}
+
+function scheduleCameraScan() {
+  if (camera.stream) camera.timer = setTimeout(scanCameraFrame, SCAN_INTERVAL_MS);
+}
+
+function scanCameraFrame() {
+  try {
+    const v = $('camera-video');
+    if (!camera.stream || camera.busy || Date.now() < camera.pausedUntil) return;
+    if (v.readyState < 2 || !v.videoWidth) return;
+
+    // Thu nhỏ khung hình về tối đa 960 px chiều ngang cho nhẹ máy.
+    const scale = Math.min(1, 960 / v.videoWidth);
+    const w = Math.round(v.videoWidth * scale);
+    const h = Math.round(v.videoHeight * scale);
+    if (camera.canvas.width !== w || camera.canvas.height !== h) { camera.canvas.width = w; camera.canvas.height = h; }
+    camera.ctx.drawImage(v, 0, 0, w, h);
+    const code = jsQR(camera.ctx.getImageData(0, 0, w, h).data, w, h, { inversionAttempts: 'attemptBoth' });
+    if (!code || !code.data) return;
+
+    // Người vừa quét vẫn để điện thoại trước camera (kể cả khi mã tự đổi sau 15 giây) thì bỏ qua,
+    // cho đến khi rời khung hình quá 6 giây. Đưa lại mã cũ sau đó sẽ bị từ chối vì mã đã dùng.
+    const parsed = parseQrContent(code.data);
+    const key = parsed ? parsed.employeeId : code.data;
+    const now = Date.now();
+    const seenRecently = key === camera.lastKey && now - camera.lastSeenAt < SAME_PERSON_IGNORE_MS;
+    camera.lastKey = key;
+    camera.lastSeenAt = now;
+    if (seenRecently) return;
+
+    camera.busy = true;
+    handleScan(code.data).finally(() => {
+      camera.busy = false;
+      camera.pausedUntil = Date.now() + AFTER_RESULT_PAUSE_MS;
+    });
+  } finally {
+    scheduleCameraScan();
+  }
+}
+
+/* Tiếng bíp như máy quét thật: cao và ngắn khi cho phép, trầm và dài hơn khi từ chối. */
+function beep(ok) {
+  const ctx = camera.audio;
+  if (!ctx) return;   // chỉ kêu sau khi người dùng đã bấm Bật camera (trình duyệt yêu cầu)
+  try {
+    if (ctx.state === 'suspended') ctx.resume();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const length = ok ? 0.15 : 0.35;
+    osc.type = ok ? 'sine' : 'square';
+    osc.frequency.value = ok ? 1046 : 220;
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + length);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + length + 0.01);
+  } catch (e) { /* bỏ qua nếu máy không phát được âm thanh */ }
+}
+
+async function maybeAutoStartCamera() {
+  // Máy cổng đã từng cho phép camera thì tự bật khi mở trang, không cần bấm.
+  if (role !== 'cong' || !navigator.permissions) return;
+  try {
+    const p = await navigator.permissions.query({ name: 'camera' });
+    if (p.state === 'granted') startCamera();
+  } catch (e) { /* trình duyệt không hỗ trợ hỏi trạng thái quyền camera */ }
 }
 
 /* ---------- Quản lý ---------- */
@@ -309,14 +548,18 @@ async function reloadAll() {
 /* ---------- Khởi động ---------- */
 
 async function init() {
+  applyRole();
   const info = await Api.detectMode();
   renderServerStatus(info);
   await reloadAll();
-  await refreshQr();
-  setInterval(tickQr, 250);
+  if (!role || role === 'nhanvien') {   // chỉ thiết bị có Thẻ ra vào mới cần tạo mã
+    await refreshQr();
+    setInterval(tickQr, 250);
+  }
 
   $('the-employee').addEventListener('change', async (ev) => {
     state.currentEmployeeId = ev.target.value;
+    writePref(EMPLOYEE_PREF, state.currentEmployeeId);
     renderEmployeeCard();
     renderEmployeeHistory();
     await refreshQr();
@@ -336,6 +579,40 @@ async function init() {
     $('scan-input').focus();
   });
 
+  // Trình duyệt chỉ cho phát tiếng sau một thao tác của người dùng, nên tạo bộ phát âm thanh
+  // ở lần chạm/bấm đầu tiên (kể cả khi camera đã tự bật).
+  const ensureAudio = () => {
+    if (camera.audio) return;
+    try { camera.audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { /* bỏ qua */ }
+  };
+  document.addEventListener('pointerdown', ensureAudio, { once: true });
+  document.addEventListener('keydown', ensureAudio, { once: true });
+
+  $('camera-toggle').addEventListener('click', () => {
+    ensureAudio();
+    if (camera.stream) stopCamera();
+    else startCamera();
+  });
+
+  $('camera-device').addEventListener('change', () => {
+    writePref(CAMERA_PREF, $('camera-device').value);
+    startCamera();
+  });
+
+  // Chế độ demo: tab khác trên cùng máy vừa ghi dữ liệu (Kiosk ghi lượt quét, Quản lý khóa nhân viên…)
+  // → tải lại để hai tab luôn khớp nhau.
+  let syncTimer = null;
+  window.addEventListener('storage', (ev) => {
+    if (Api.mode !== 'demo' || ev.key !== DemoStore.KEY) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(reloadAll, 150);
+  });
+
+  // Chế độ API thật: màn hình Quản lý tự tải lại mỗi 5 giây để thấy lượt quét từ các cổng.
+  setInterval(() => {
+    if (Api.mode === 'api' && currentView() === 'quanly' && !document.hidden) reloadAll();
+  }, 5000);
+
   $('kiosk-gate').addEventListener('change', renderKioskHistory);
   $('ql-result').addEventListener('change', renderAdmin);
   $('ql-gate').addEventListener('change', renderAdmin);
@@ -349,6 +626,7 @@ async function init() {
 
   window.addEventListener('hashchange', route);
   route();
+  maybeAutoStartCamera();
 }
 
 init();

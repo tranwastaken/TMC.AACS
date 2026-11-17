@@ -22,6 +22,9 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* Thuộc tính hidden luôn thắng các luật display:flex/grid bên dưới */
+[hidden] { display: none !important; }
+
 html { font-size: 100%; }
 
 body {
@@ -97,6 +100,15 @@ h1, h2, p, ol, ul, figure { margin: 0; }
 .tabs a[aria-current="page"] {
   color: #fff;
   border-bottom-color: var(--hazard);
+}
+
+/* Nhãn vai trò, thay cho thanh tab khi mở bằng ?vaitro= */
+.role-chip {
+  align-self: center;
+  padding-left: 1rem;
+  border-left: 1px solid #4A5966;
+  color: #fff;
+  font-weight: 600;
 }
 
 .server {
@@ -257,6 +269,31 @@ input[type="text"] { width: 100%; font-variant-numeric: tabular-nums; }
 .kiosk-side { display: flex; flex-direction: column; gap: 1rem; }
 .kiosk-side .small-heading { margin-top: .75rem; }
 .scan-form { display: flex; flex-direction: column; gap: .6rem; }
+
+/* Camera quét mã */
+.camera { display: flex; flex-direction: column; gap: .5rem; }
+.camera-frame {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: var(--idle);
+  border-radius: .5rem;
+  overflow: hidden;
+}
+.camera-frame video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.camera-frame video.mirror { transform: scaleX(-1); }
+/* Khung canh mã: viền vàng như vạch sơn cảnh báo trên sàn xưởng */
+.camera-guide {
+  position: absolute; left: 50%; top: 50%;
+  width: 58%; aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border: 3px solid var(--hazard);
+  border-radius: .35rem;
+  box-shadow: 0 0 0 100vmax rgba(31, 42, 51, .35);
+  pointer-events: none;
+}
+.camera-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.camera-actions select { flex: 1 1 10rem; min-width: 0; }
+.hint-error { color: var(--stop); font-weight: 600; }
 .scan-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
 
 /* Tấm biển kết quả – thành phần nổi bật duy nhất của giao diện */

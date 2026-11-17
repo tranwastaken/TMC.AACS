@@ -18,12 +18,14 @@
       <span class="brand-name">TMC AACS</span>
     </div>
 
-    <!-- Ba màn hình; có thể mở thẳng bằng địa chỉ /#the, /#kiosk, /#quanly -->
+    <!-- Ba màn hình; có thể mở thẳng bằng địa chỉ /#the, /#kiosk, /#quanly.
+         Thêm ?vaitro=nhanvien | cong | quanly để mỗi thiết bị chỉ thấy màn hình của mình. -->
     <nav class="tabs" aria-label="Màn hình">
       <a href="#the" data-view="the">Thẻ ra vào</a>
       <a href="#kiosk" data-view="kiosk">Kiosk cổng</a>
       <a href="#quanly" data-view="quanly">Quản lý</a>
     </nav>
+    <p class="role-chip" id="role-chip" hidden></p>
 
     <p class="server" id="server-status" role="status">
       <span class="dot" aria-hidden="true"></span>
@@ -79,6 +81,20 @@
           <select id="kiosk-gate"></select>
         </label>
 
+        <!-- Quét bằng camera (webcam laptop hoặc camera máy tính bảng), đọc mã bằng jsQR -->
+        <div class="camera">
+          <span class="field-label">Camera quét mã</span>
+          <div class="camera-frame" id="camera-frame" hidden>
+            <video id="camera-video" playsinline muted></video>
+            <span class="camera-guide" aria-hidden="true"></span>
+          </div>
+          <div class="camera-actions">
+            <button type="button" class="btn btn-primary" id="camera-toggle">Bật camera</button>
+            <select id="camera-device" aria-label="Chọn camera" hidden></select>
+          </div>
+          <p class="field-hint" id="camera-hint">Đưa mã QR trên điện thoại vào khung vàng, cách camera khoảng 20–30 cm.</p>
+        </div>
+
         <form class="scan-form" id="scan-form" autocomplete="off">
           <label class="field">
             <span class="field-label">Dữ liệu từ máy quét</span>
@@ -86,10 +102,10 @@
             <input id="scan-input" name="scan" type="text" spellcheck="false" placeholder="Quét mã, hoặc dán nội dung mã rồi nhấn Enter">
           </label>
           <div class="scan-actions">
-            <button type="submit" class="btn btn-primary">Kiểm tra mã</button>
+            <button type="submit" class="btn">Kiểm tra mã</button>
             <button type="button" class="btn" id="use-current-qr">Dùng mã trên Thẻ ra vào</button>
           </div>
-          <p class="field-hint">Nút thứ hai lấy mã đang hiển thị ở màn hình Thẻ ra vào, để thử khi không có máy quét.</p>
+          <p class="field-hint" id="use-current-hint">Nút thứ hai lấy mã đang hiển thị ở màn hình Thẻ ra vào trên cùng máy, để thử khi không có camera hay máy quét.</p>
         </form>
 
         <h2 class="small-heading">Lượt quét gần đây tại cổng này</h2>
@@ -154,6 +170,7 @@
   <p class="toast" id="toast" role="alert" hidden></p>
 
   <script src="js/qrcode.js"></script>
+  <script src="js/jsQR.js"></script>
   <script src="js/api.js"></script>
   <script src="js/app.js"></script>
 </body>

@@ -15,24 +15,11 @@ const AACS = {
   QR_PREFIX: 'AACS1',          // tiền tố nội dung mã QR: AACS1|<employeeId>|<token>
   TOKEN_LIFETIME_SECONDS: 30,  // token hết hạn sau 30 giây
   QR_REFRESH_SECONDS: 15,      // ứng dụng đổi mã mới mỗi 15 giây
+  CLOCK_SKEW_SECONDS: 30,      // cho phép đồng hồ điện thoại chạy nhanh hơn máy cổng tối đa 30 giây
   TURNSTILE_OPEN_SECONDS: 5,
 };
 
 /* ---------- Tiện ích ---------- */
-
-function base64UrlEncode(text) {
-  const bytes = new TextEncoder().encode(text);
-  let bin = '';
-  bytes.forEach(b => { bin += String.fromCharCode(b); });
-  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function base64UrlDecode(text) {
-  const b64 = text.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((text.length + 3) % 4);
-  const bin = atob(b64);
-  const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
-}
 
 // Băm FNV-1a 32 bit. CHỈ dùng cho chữ ký mô phỏng ở chế độ demo, KHÔNG an toàn.
 // Token thật do UC1 ký số (xem IDynamicQrTokenService).
@@ -43,6 +30,15 @@ function demoHash(text) {
     h = Math.imul(h, 0x01000193) >>> 0;
   }
   return h.toString(16).padStart(8, '0');
+}
+
+// Chuỗi ngẫu nhiên ngắn (chữ thường + số). crypto.getRandomValues dùng được cả khi trang
+// mở bằng http://<IP>:5000 trên điện thoại (khác crypto.randomUUID chỉ có trên https/localhost).
+function shortRandom(length = 10) {
+  const bytes = new Uint8Array(length);
+  if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(bytes);
+  else bytes.forEach((_, i) => { bytes[i] = Math.random() * 256 | 0; });
+  return Array.from(bytes, b => (b % 36).toString(36)).join('');
 }
 
 function newId() {
@@ -104,6 +100,10 @@ const DemoStore = (() => {
 
   let state = null;
 
+  // Tab khác (ví dụ tab Quản lý và tab Kiosk trên cùng laptop) vừa ghi dữ liệu
+  // → bỏ bản đang giữ trong bộ nhớ để lần đọc sau lấy bản mới.
+  window.addEventListener('storage', (ev) => { if (ev.key === KEY) state = null; });
+
   function load() {
     try {
       const raw = localStorage.getItem(KEY);
@@ -124,34 +124,40 @@ const DemoStore = (() => {
     return state;
   }
 
-  return { load, save, reset, get state() { return state || load(); } };
+  return { KEY, load, save, reset, get state() { return state || load(); } };
 })();
+
+// Khóa ký giả lập dùng chung cho mọi thiết bị chạy bản demo (điện thoại tạo mã, laptop kiểm tra mã).
+// Ai đọc được file này cũng tạo được mã hợp lệ, nên CHỈ dùng để demo.
+const DEMO_SIGNING_KEY = 'tmc-aacs-demo';
 
 /* ---------- Mô phỏng các thành phần phía server (chỉ dùng ở chế độ demo) ---------- */
 
 const DemoServer = {
-  /** Mô phỏng UC1 – cấp token QR động. */
+  /**
+   * Mô phỏng UC1 – cấp token QR động.
+   * Token gọn: <iat base36>.<jti>.<chữ ký>, khoảng 26 ký tự, để mã QR thưa và webcam laptop đọc được.
+   * Chữ ký phủ cả employeeId nên sửa mã nhân viên trong QR sẽ bị phát hiện.
+   */
   issueToken(employeeId) {
-    const payload = base64UrlEncode(JSON.stringify({
-      e: employeeId,
-      iat: Math.floor(Date.now() / 1000),
-      jti: newId(),
-    }));
-    return { token: `${payload}.${demoHash(payload)}`, expiresAtUtc: new Date(Date.now() + AACS.TOKEN_LIFETIME_SECONDS * 1000).toISOString() };
+    const iat = Math.floor(Date.now() / 1000).toString(36);
+    const jti = shortRandom(10);
+    const sig = demoHash(`${DEMO_SIGNING_KEY}|${employeeId}|${iat}|${jti}`);
+    return { token: `${iat}.${jti}.${sig}`, expiresAtUtc: new Date(Date.now() + AACS.TOKEN_LIFETIME_SECONDS * 1000).toISOString() };
   },
 
   /** Mô phỏng IDynamicQrTokenService.ValidateTokenAsync: chữ ký, thời hạn, chống dùng lại (jti). */
   validateToken(employeeId, token, s) {
     if (!token || typeof token !== 'string') return null;
-    const [payload, sig] = token.split('.');
-    if (!payload || !sig || demoHash(payload) !== sig) return null;
-    let claims;
-    try { claims = JSON.parse(base64UrlDecode(payload)); } catch (e) { return null; }
-    const age = Math.floor(Date.now() / 1000) - claims.iat;
-    if (claims.e !== employeeId) return null;
-    if (age < -5 || age > AACS.TOKEN_LIFETIME_SECONDS) return null;
-    if (s.usedJti[claims.jti]) return null;
-    return claims;
+    const [iat36, jti, sig] = token.split('.');
+    if (!iat36 || !jti || !sig) return null;
+    if (demoHash(`${DEMO_SIGNING_KEY}|${employeeId}|${iat36}|${jti}`) !== sig) return null;
+    const iat = parseInt(iat36, 36);
+    const age = Math.floor(Date.now() / 1000) - iat;
+    if (!Number.isFinite(age)) return null;
+    if (age < -AACS.CLOCK_SKEW_SECONDS || age > AACS.TOKEN_LIFETIME_SECONDS) return null;
+    if (s.usedJti[jti]) return null;
+    return { e: employeeId, iat, jti };
   },
 
   /** Mô phỏng AccessDecisionEngine.Evaluate – cùng thứ tự kiểm tra và cùng thông báo. */
@@ -191,7 +197,10 @@ const DemoServer = {
       return { isSuccess: false, message: decision.reason };
     }
 
-    s.usedJti[claims.jti] = Date.now();   // đánh dấu token đã dùng
+    // Đánh dấu token đã dùng; bỏ các dấu cũ hơn 5 phút (token đó đã hết hạn từ lâu).
+    const cutoff = Date.now() - 5 * 60 * 1000;
+    for (const k of Object.keys(s.usedJti)) if (s.usedJti[k] < cutoff) delete s.usedJti[k];
+    s.usedJti[claims.jti] = Date.now();
     record(true);                          // lưu giao dịch TRƯỚC khi mở cổng
     return { isSuccess: true, message: 'Mở cổng và ghi nhận điểm danh thành công!' };
   },
