@@ -1,0 +1,398 @@
+/* =====================================================================
+   app.css – Giao diện TMC AACS
+   Hệ màu lấy từ biển báo an toàn trong nhà máy:
+   xanh an toàn = cho phép, đỏ tín hiệu = từ chối, vàng cảnh báo = chú ý / focus.
+   ===================================================================== */
+
+:root {
+  --steel: #1F2A33;        /* chữ chính, thanh trên cùng */
+  --steel-soft: #4A5966;   /* chữ phụ */
+  --concrete: #E6E9EC;     /* nền trang */
+  --panel: #FFFFFF;
+  --line: #C3CBD2;
+  --idle: #2B3843;         /* biển kiosk khi chờ */
+  --go: #0B7A3E;           /* cho phép */
+  --stop: #C0262D;         /* từ chối */
+  --hazard: #F5C400;       /* chú ý, viền focus */
+  --hazard-pale: #FFF4C2;
+
+  --font-body: 'Barlow', 'Segoe UI', system-ui, sans-serif;
+  --font-sign: 'Barlow Condensed', 'Barlow', 'Segoe UI', system-ui, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Thuộc tính hidden luôn thắng các luật display:flex/grid bên dưới */
+[hidden] { display: none !important; }
+
+html { font-size: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--steel);
+  background: var(--concrete);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, p, ol, ul, figure { margin: 0; }
+
+:focus-visible {
+  outline: 3px solid var(--hazard);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+.skip {
+  position: absolute; left: 1rem; top: -3rem;
+  background: var(--hazard); color: var(--steel);
+  padding: .5rem .75rem; font-weight: 600; z-index: 10;
+}
+.skip:focus { top: .5rem; }
+
+/* ---------- Thanh trên cùng ---------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0 1.25rem;
+  min-height: 3.5rem;
+  background: var(--steel);
+  color: #fff;
+  flex-wrap: wrap;
+}
+
+.brand { display: flex; align-items: center; gap: .6rem; }
+
+/* Ô vuông kẻ sọc như vạch sơn cảnh báo trên sàn xưởng */
+.brand-mark {
+  width: 1.1rem; height: 1.1rem;
+  background: repeating-linear-gradient(-45deg, var(--hazard) 0 4px, var(--steel) 4px 7px);
+  border: 2px solid var(--hazard);
+}
+
+.brand-name {
+  font-family: var(--font-sign);
+  font-weight: 700;
+  font-size: 1.35rem;
+  letter-spacing: .02em;
+}
+
+.tabs { display: flex; gap: .25rem; align-self: stretch; }
+
+.tabs a {
+  display: flex; align-items: center;
+  padding: 0 .9rem;
+  color: #C9D2DA;
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 3px solid transparent;
+}
+.tabs a:hover { color: #fff; }
+.tabs a[aria-current="page"] {
+  color: #fff;
+  border-bottom-color: var(--hazard);
+}
+
+/* Nhãn vai trò, thay cho thanh tab khi mở bằng ?vaitro= */
+.role-chip {
+  align-self: center;
+  padding-left: 1rem;
+  border-left: 1px solid #4A5966;
+  color: #fff;
+  font-weight: 600;
+}
+
+.server {
+  margin-left: auto;
+  display: flex; align-items: center; gap: .5rem;
+  font-size: .9rem;
+  color: #C9D2DA;
+}
+.server .dot {
+  width: .6rem; height: .6rem; border-radius: 50%;
+  background: #8795A1;
+}
+.server[data-state="api"] .dot { background: #3DDC84; }
+.server[data-state="demo"] .dot { background: var(--hazard); }
+.server[data-state="down"] .dot { background: #FF6B6B; }
+
+/* ---------- Băng báo dữ liệu demo ---------- */
+
+.demo-band {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  padding: .55rem 1.25rem .55rem 1.75rem;
+  background:
+    repeating-linear-gradient(-45deg, var(--hazard) 0 8px, var(--steel) 8px 14px) left / .55rem 100% no-repeat,
+    var(--hazard-pale);
+  font-size: .95rem;
+}
+.demo-band p { max-width: 70ch; }
+
+.link-btn {
+  font: inherit; font-weight: 600;
+  background: none; border: 0; padding: 0;
+  color: var(--steel); text-decoration: underline; cursor: pointer;
+}
+
+/* ---------- Thành phần chung ---------- */
+
+main { padding: 1.5rem 1.25rem 3rem; }
+
+.field { display: flex; flex-direction: column; gap: .3rem; }
+.field-label { font-weight: 600; font-size: .9rem; }
+.field-hint { font-size: .85rem; color: var(--steel-soft); }
+.field-inline { flex-direction: row; align-items: center; gap: .5rem; }
+
+select, input[type="text"] {
+  font: inherit;
+  color: var(--steel);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: .55rem .7rem;
+  min-height: 2.6rem;
+}
+input[type="text"] { width: 100%; font-variant-numeric: tabular-nums; }
+
+.btn {
+  font: inherit; font-weight: 600;
+  padding: .55rem .95rem;
+  min-height: 2.6rem;
+  border: 1px solid var(--steel);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--steel);
+  cursor: pointer;
+}
+.btn:hover { background: #F1F3F5; }
+.btn-primary { background: var(--steel); color: #fff; }
+.btn-primary:hover { background: #2E3D49; }
+.btn-small { padding: .3rem .6rem; min-height: 2rem; font-size: .85rem; }
+
+.small-heading {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 1.75rem 0 .5rem;
+}
+
+/* Danh sách lượt quét (dùng ở Thẻ ra vào và Kiosk) */
+.history { list-style: none; padding: 0; border-top: 1px solid var(--line); }
+.history li {
+  display: grid;
+  grid-template-columns: 3.4rem 1fr auto;
+  gap: .75rem;
+  align-items: baseline;
+  padding: .55rem 0;
+  border-bottom: 1px solid var(--line);
+  font-size: .95rem;
+}
+.history time { font-variant-numeric: tabular-nums; color: var(--steel-soft); }
+.history .empty { display: block; color: var(--steel-soft); }
+
+/* Ký hiệu kết quả: ô vuông màu + chữ, không chỉ dựa vào màu */
+.result { display: inline-flex; align-items: center; gap: .4rem; font-weight: 600; white-space: nowrap; }
+.result::before { content: ''; width: .7rem; height: .7rem; background: currentColor; }
+.result-ok { color: var(--go); }
+.result-no { color: var(--stop); }
+
+/* ---------- Thẻ ra vào ---------- */
+
+.phone {
+  max-width: 26rem;
+  margin: 0 auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  padding: 1.25rem 1.25rem 1.5rem;
+}
+
+.person { margin: 1.25rem 0 1rem; }
+.person-name {
+  font-family: var(--font-sign);
+  font-weight: 700;
+  font-size: 2rem;
+  line-height: 1.1;
+}
+.person-meta { color: var(--steel-soft); margin-top: .2rem; }
+.person-warning {
+  margin-top: .6rem;
+  padding: .45rem .6rem;
+  border-left: 4px solid var(--stop);
+  background: #FBEAEA;
+  font-size: .9rem;
+}
+
+.qr-card {
+  border: 1px solid var(--line);
+  border-radius: .5rem;
+  padding: 1rem 1rem .75rem;
+  text-align: center;
+}
+.qr-box { width: min(100%, 17rem); aspect-ratio: 1; margin: 0 auto; }
+.qr-box svg { width: 100%; height: 100%; display: block; }
+
+.qr-timer {
+  height: 5px;
+  margin: .9rem 0 .5rem;
+  background: #D5DBE0;
+  overflow: hidden;
+}
+.qr-timer span {
+  display: block; height: 100%; width: 100%;
+  background: var(--steel);
+  transform-origin: left center;
+}
+.qr-timer.low span { background: var(--hazard); }
+.qr-card figcaption { font-size: .9rem; color: var(--steel-soft); font-variant-numeric: tabular-nums; }
+
+.the-help { margin-top: 1rem; font-size: .92rem; color: var(--steel-soft); max-width: 60ch; }
+
+/* ---------- Kiosk ---------- */
+
+.view-kiosk {
+  display: grid;
+  grid-template-columns: minmax(18rem, 22rem) 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+.view-kiosk[hidden] { display: none; }
+
+.kiosk-side { display: flex; flex-direction: column; gap: 1rem; }
+.kiosk-side .small-heading { margin-top: .75rem; }
+.scan-form { display: flex; flex-direction: column; gap: .6rem; }
+
+/* Camera quét mã */
+.camera { display: flex; flex-direction: column; gap: .5rem; }
+.camera-frame {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: var(--idle);
+  border-radius: .5rem;
+  overflow: hidden;
+}
+.camera-frame video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.camera-frame video.mirror { transform: scaleX(-1); }
+/* Khung canh mã: viền vàng như vạch sơn cảnh báo trên sàn xưởng */
+.camera-guide {
+  position: absolute; left: 50%; top: 50%;
+  width: 58%; aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border: 3px solid var(--hazard);
+  border-radius: .35rem;
+  box-shadow: 0 0 0 100vmax rgba(31, 42, 51, .35);
+  pointer-events: none;
+}
+.camera-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.camera-actions select { flex: 1 1 10rem; min-width: 0; }
+.hint-error { color: var(--stop); font-weight: 600; }
+.scan-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+/* Tấm biển kết quả – thành phần nổi bật duy nhất của giao diện */
+.sign {
+  min-height: min(72vh, 40rem);
+  border-radius: .6rem;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+  color: #fff;
+  display: flex; flex-direction: column; justify-content: center;
+  transition: background-color .15s ease-out;
+}
+.sign-idle { background: var(--idle); }
+.sign-busy { background: #3B4A57; }
+.sign-go { background: var(--go); }
+.sign-stop { background: var(--stop); }
+
+.sign-title {
+  font-family: var(--font-sign);
+  font-weight: 700;
+  font-size: clamp(3.2rem, 8vw, 7rem);
+  line-height: .95;
+}
+.sign-name {
+  margin-top: 1.25rem;
+  font-size: clamp(1.3rem, 2.4vw, 2rem);
+  font-weight: 600;
+  max-width: 30ch;
+}
+.sign-detail { margin-top: .6rem; font-size: clamp(1rem, 1.6vw, 1.25rem); max-width: 50ch; opacity: .92; }
+.sign-foot { margin-top: 2rem; font-size: .95rem; opacity: .8; font-variant-numeric: tabular-nums; }
+
+/* ---------- Quản lý ---------- */
+
+.ql-head { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.ql-head h1 { font-family: var(--font-sign); font-weight: 700; font-size: 2.2rem; line-height: 1.1; }
+.ql-summary { color: var(--steel-soft); }
+
+.ql-grid {
+  display: grid;
+  grid-template-columns: 1fr minmax(16rem, 21rem);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.filters { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; margin-bottom: .75rem; }
+
+.table-wrap { background: var(--panel); border: 1px solid var(--line); overflow-x: auto; }
+.tx-table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+.tx-table th {
+  text-align: left; font-weight: 600; font-size: .88rem;
+  padding: .6rem .8rem;
+  border-bottom: 2px solid var(--steel);
+  background: #F5F7F8;
+  white-space: nowrap;
+}
+.tx-table td { padding: .55rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tx-table td:first-child { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tx-table .sub { display: block; font-size: .82rem; color: var(--steel-soft); }
+.tx-table .reason { color: var(--steel-soft); max-width: 34ch; }
+.tx-table .empty-row td { color: var(--steel-soft); padding: 1.25rem .8rem; }
+
+.ql-side .small-heading:first-child { margin-top: 0; }
+.admin-list { list-style: none; padding: 0; background: var(--panel); border: 1px solid var(--line); }
+.admin-list li {
+  display: flex; justify-content: space-between; align-items: center; gap: .75rem;
+  padding: .55rem .75rem;
+  border-bottom: 1px solid var(--line);
+}
+.admin-list li:last-child { border-bottom: 0; }
+.admin-list .who { font-weight: 600; }
+.admin-list .sub { display: block; font-size: .82rem; color: var(--steel-soft); font-weight: 400; }
+.admin-list .state-off { color: var(--stop); }
+
+/* ---------- Thông báo ngắn ---------- */
+
+.toast {
+  position: fixed; left: 50%; bottom: 1.25rem; transform: translateX(-50%);
+  background: var(--steel); color: #fff;
+  padding: .7rem 1rem; border-radius: 4px;
+  max-width: min(90vw, 36rem);
+  box-shadow: 0 6px 20px rgba(31, 42, 51, .25);
+}
+
+/* ---------- Màn hình nhỏ ---------- */
+
+@media (max-width: 56rem) {
+  .view-kiosk, .ql-grid { grid-template-columns: 1fr; }
+  .sign { min-height: 45vh; order: -1; }
+}
+
+@media (max-width: 40rem) {
+  .topbar { gap: .5rem 1rem; padding-top: .5rem; }
+  .tabs { order: 3; width: 100%; overflow-x: auto; }
+  .tabs a { padding: .6rem .7rem; }
+  .server { font-size: .8rem; }
+  main { padding: 1rem .75rem 2rem; }
+  .phone { border-radius: .75rem; padding: 1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sign { transition: none; }
+}

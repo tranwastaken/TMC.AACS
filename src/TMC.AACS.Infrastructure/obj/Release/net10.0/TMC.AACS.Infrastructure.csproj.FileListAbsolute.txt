@@ -1,0 +1,17 @@
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Infrastructure\bin\Release\net10.0\TMC.AACS.Infrastructure.deps.json
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Infrastructure\bin\Release\net10.0\TMC.AACS.Infrastructure.dll
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Infrastructure\bin\Release\net10.0\TMC.AACS.Infrastructure.pdb
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Infrastructure\bin\Release\net10.0\TMC.AACS.Application.dll
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Infrastructure\bin\Release\net10.0\TMC.AACS.Domain.dll
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Infrastructure\bin\Release\net10.0\TMC.AACS.Application.pdb
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Infrastructure\bin\Release\net10.0\TMC.AACS.Domain.pdb
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Infrastructure\obj\Release\net10.0\TMC.AACS.Infrastructure.csproj.AssemblyReference.cache
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Infrastructure\obj\Release\net10.0\TMC.AACS.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Infrastructure\obj\Release\net10.0\TMC.AACS.Infrastructure.AssemblyInfoInputs.cache
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Infrastructure\obj\Release\net10.0\TMC.AACS.Infrastructure.AssemblyInfo.cs
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Infrastructure\obj\Release\net10.0\TMC.AACS.Infrastructure.csproj.CoreCompileInputs.cache
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Infrastructure\obj\Release\net10.0\TMC.AACS.9BC498F2.Up2Date
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Infrastructure\obj\Release\net10.0\TMC.AACS.Infrastructure.dll
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Infrastructure\obj\Release\net10.0\refint\TMC.AACS.Infrastructure.dll
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Infrastructure\obj\Release\net10.0\TMC.AACS.Infrastructure.pdb
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Infrastructure\obj\Release\net10.0\ref\TMC.AACS.Infrastructure.dll

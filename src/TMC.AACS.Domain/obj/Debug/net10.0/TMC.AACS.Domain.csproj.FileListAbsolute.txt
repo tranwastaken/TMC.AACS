@@ -1,0 +1,11 @@
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Domain\bin\Debug\net10.0\TMC.AACS.Domain.deps.json
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Domain\bin\Debug\net10.0\TMC.AACS.Domain.dll
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Domain\bin\Debug\net10.0\TMC.AACS.Domain.pdb
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Domain\obj\Debug\net10.0\TMC.AACS.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Domain\obj\Debug\net10.0\TMC.AACS.Domain.AssemblyInfoInputs.cache
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Domain\obj\Debug\net10.0\TMC.AACS.Domain.AssemblyInfo.cs
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Domain\obj\Debug\net10.0\TMC.AACS.Domain.csproj.CoreCompileInputs.cache
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Domain\obj\Debug\net10.0\TMC.AACS.Domain.dll
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Domain\obj\Debug\net10.0\refint\TMC.AACS.Domain.dll
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Domain\obj\Debug\net10.0\TMC.AACS.Domain.pdb
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Domain\obj\Debug\net10.0\ref\TMC.AACS.Domain.dll
