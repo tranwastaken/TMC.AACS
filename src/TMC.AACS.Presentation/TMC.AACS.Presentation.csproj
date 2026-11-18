@@ -14,5 +14,4 @@
     <ProjectReference Include="..\TMC.AACS.Application\TMC.AACS.Application.csproj" />
     <ProjectReference Include="..\TMC.AACS.Infrastructure\TMC.AACS.Infrastructure.csproj" />
   </ItemGroup>
-
 </Project>

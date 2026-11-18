@@ -1,6 +1,6 @@
+
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Domain: tầng trong cùng. KHÔNG có ProjectReference và KHÔNG có PackageReference. -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

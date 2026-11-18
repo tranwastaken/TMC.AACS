@@ -1,72 +1,102 @@
 using TMC.AACS.Application.Abstractions;
-using TMC.AACS.Application.DTOs;
 using TMC.AACS.Domain.Entities;
-using TMC.AACS.Domain.Services;
-using TMC.AACS.Domain.Strategies;
 
 namespace TMC.AACS.Application.UseCases;
 
-public class RecordAccessUseCase
+public sealed class RecordAccessUseCase
 {
-    private readonly IAccessVerificationStrategy _verificationStrategy;
-    private readonly AccessDecisionEngine _decisionEngine;
-    private readonly IAttendanceRepository _attendanceRepository;
-    private readonly ITurnstileGateway _turnstileGateway;
-    private readonly IAuditLogger _auditLogger;
+    private readonly IKioskOfflineCachingService _offlineCache;
+    private readonly Func<string, Employee?> _employeeLookup;
+    private readonly Func<string, GateStation?> _gateLookup;
+    private readonly Func<AttendanceTransaction, CancellationToken, Task<bool>> _centralRecordHandler;
 
     public RecordAccessUseCase(
-        IAccessVerificationStrategy verificationStrategy,
-        AccessDecisionEngine decisionEngine,
-        IAttendanceRepository attendanceRepository,
-        ITurnstileGateway turnstileGateway,
-        IAuditLogger auditLogger)
+        IKioskOfflineCachingService offlineCache,
+        Func<string, Employee?> employeeLookup,
+        Func<string, GateStation?> gateLookup,
+        Func<AttendanceTransaction, CancellationToken, Task<bool>> centralRecordHandler)
     {
-        _verificationStrategy = verificationStrategy;
-        _decisionEngine = decisionEngine;
-        _attendanceRepository = attendanceRepository;
-        _turnstileGateway = turnstileGateway;
-        _auditLogger = auditLogger;
+        _offlineCache = offlineCache;
+        _employeeLookup = employeeLookup;
+        _gateLookup = gateLookup;
+        _centralRecordHandler = centralRecordHandler;
     }
 
-    public async Task<AccessResponse> ExecuteAsync(AccessRequest request)
+    public async Task<AccessResponse> ExecuteAsync(AccessRequest request, CancellationToken ct = default)
     {
-        await _auditLogger.LogAsync($"[START] Xử lý điểm danh | Employee: {request.EmployeeId} | Gate: {request.GateId}");
+        var clientEventId = request.ClientEventId ?? Guid.NewGuid();
+        var employee = _employeeLookup(request.EmployeeId);
+        var gate = _gateLookup(request.GateId);
 
-        bool isQrValid = await _verificationStrategy.VerifyAsync(request.QrToken);
-        if (!isQrValid)
+        var (allowed, message) = EvaluateDecision(employee, gate, request.QrToken);
+        var result = allowed ? AccessResult.Allowed : AccessResult.Denied;
+
+        if (_offlineCache.IsNetworkOnline)
         {
-            await _auditLogger.LogAsync($"[DENIED] Mã QR không hợp lệ hoặc đã hết hạn | Employee: {request.EmployeeId}");
-            return AccessResponse.Failure("Mã QR không hợp lệ hoặc đã hết hạn.");
+            try
+            {
+                var tx = new AttendanceTransaction
+                {
+                    ClientEventId = clientEventId,
+                    EmployeeId = request.EmployeeId,
+                    GateStationId = request.GateId,
+                    ScannedAtUtc = request.Timestamp.ToUniversalTime(),
+                    Result = result,
+                    Status = "Recorded",
+                    DenyReason = allowed ? null : message,
+                    WasOfflineCached = false
+                };
+
+                var saved = await _centralRecordHandler(tx, ct);
+                if (saved)
+                {
+                    return new AccessResponse(allowed, message, false, clientEventId);
+                }
+            }
+            catch
+            {
+                // Network failure during central call -> fallback to local offline cache
+            }
         }
 
-        var employee = new Employee { Id = request.EmployeeId, IsLocked = false };
-        var gate = new GateStation { Id = request.GateId, IsUnderMaintenance = false };
-
-        var decision = _decisionEngine.Evaluate(employee, gate);
-        if (!decision.IsAllowed)
+        var offlineEntry = new OfflineScanEntry
         {
-            await _auditLogger.LogAsync($"[DENIED] Lý do: {decision.Reason} | Employee: {request.EmployeeId}");
-            return AccessResponse.Failure(decision.Reason);
-        }
-
-        var transaction = new AttendanceTransaction
-        {
-            Id = Guid.NewGuid(),
+            ClientEventId = clientEventId,
             EmployeeId = request.EmployeeId,
             GateStationId = request.GateId,
-            ScannedAtUtc = request.Timestamp,
-            Status = "GRANTED"
+            QrToken = request.QrToken,
+            ScannedAtUtc = request.Timestamp.ToUniversalTime(),
+            LocalDecision = result,
+            DenyReason = allowed ? null : message,
+            SyncStatus = OfflineSyncStatus.PendingSync
         };
-        await _attendanceRepository.SaveAsync(transaction);
 
-        bool isGateOpened = await _turnstileGateway.SendOpenCommandAsync(request.GateId.ToString(), 5);
-        if (!isGateOpened)
-        {
-            await _auditLogger.LogAsync($"[WARNING] Đã lưu bản ghi điểm danh nhưng thiết bị cổng không mở | Gate: {request.GateId}");
-        }
+        await _offlineCache.EnqueueAsync(offlineEntry, ct);
 
-        await _auditLogger.LogAsync($"[SUCCESS] Điểm danh thành công | Employee: {request.EmployeeId}");
+        var offlineMsg = allowed
+            ? $"{message} (Đã lưu bộ nhớ đệm cục bộ)"
+            : $"{message} (Đã ghi nhận offline)";
 
-        return AccessResponse.Success("Mở cổng và ghi nhận điểm danh thành công!");
+        return new AccessResponse(allowed, offlineMsg, true, clientEventId);
+    }
+
+    private static (bool Allowed, string Message) EvaluateDecision(Employee? employee, GateStation? gate, string qrToken)
+    {
+        if (string.IsNullOrWhiteSpace(qrToken) || qrToken.Length < 10)
+            return (false, "Từ chối: Mã QR không hợp lệ hoặc đã hết hạn.");
+
+        if (gate is null)
+            return (false, "Từ chối: Không tìm thấy trạm cổng.");
+
+        if (gate.IsUnderMaintenance)
+            return (false, "Từ chối: Cổng đang bảo trì.");
+
+        if (employee is null)
+            return (false, "Từ chối: Không tìm thấy nhân viên.");
+
+        if (employee.IsLocked)
+            return (false, "Từ chối: Tài khoản nhân viên đang bị khóa.");
+
+        return (true, $"Mời qua cổng ({employee.FullName})");
     }
 }

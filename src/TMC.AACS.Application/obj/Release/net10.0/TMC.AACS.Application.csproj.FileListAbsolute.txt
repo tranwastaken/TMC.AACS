@@ -1,0 +1,15 @@
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Application\bin\Release\net10.0\TMC.AACS.Application.deps.json
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Application\bin\Release\net10.0\TMC.AACS.Application.dll
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Application\bin\Release\net10.0\TMC.AACS.Application.pdb
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Application\bin\Release\net10.0\TMC.AACS.Domain.dll
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Application\bin\Release\net10.0\TMC.AACS.Domain.pdb
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Application\obj\Release\net10.0\TMC.AACS.Application.csproj.AssemblyReference.cache
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Application\obj\Release\net10.0\TMC.AACS.Application.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Application\obj\Release\net10.0\TMC.AACS.Application.AssemblyInfoInputs.cache
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Application\obj\Release\net10.0\TMC.AACS.Application.AssemblyInfo.cs
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Application\obj\Release\net10.0\TMC.AACS.Application.csproj.CoreCompileInputs.cache
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Application\obj\Release\net10.0\TMC.AACS.C26E36E2.Up2Date
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Application\obj\Release\net10.0\TMC.AACS.Application.dll
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Application\obj\Release\net10.0\refint\TMC.AACS.Application.dll
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Application\obj\Release\net10.0\TMC.AACS.Application.pdb
+C:\Users\dinhd\OneDrive\Máy tính\tmc-aacs-azure-offline\src\TMC.AACS.Application\obj\Release\net10.0\ref\TMC.AACS.Application.dll
